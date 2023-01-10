@@ -1,3 +1,6 @@
 [submodule "src/soilar-module-template"]
 	path = src/soilar-module-template
 	url = https://BabyYod4@bitbucket.org/babyyod4/soilar-module-template.git
+[submodule "src/soilar-mainframe"]
+	path = src/soilar-mainframe
+	url = https://BabyYod4@bitbucket.org/babyyod4/soilar-mainframe.git

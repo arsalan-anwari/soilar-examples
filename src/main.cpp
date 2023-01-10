@@ -1,87 +1,88 @@
-#include "soilar-module-template/drivers/rfm95w/rfm95w.h"          
-#include INIT_ENVOIRMENT
+/**
+ * ___________________________________
+ * | Type  | WiringPi | Rpi | iC880a |
+ * |-------|----------|-----|--------|
+ * | GND1  | 6        | 6   | 12     |                 
+ * | Reset | 9        | 5   | 13     |
+ * | CLK   | 14       | 23  | 14     |
+ * | MISO  | 13       | 21  | 15     |
+ * | MOSI  | 12       | 19  | 16     |
+ * | NSS   | 10       | 24  | 17     |
+ * ===================================
+ */
 
-// Uno Receiver
-/*
-  DIO0 - D2
-  RESET - D8
-  NSS - D9
-  SCK - D13
-  MOSI - D11
-  MISO - D12
-*/
+/**
+ * LEDS:
+ * 1) Backhaul packes 
+ * 2) TX packet 
+ * 3) RX Sensor packet 
+ * 4) RX FSK packets 
+ * 5) RX buffer not empty 
+ * 6) Power
+ */
 
-// Due Receiver
-/*
-  DIO0 - D22
-  RESET - D12
-  NSS - D13
-  SCK - D74
-  MOSI - D75
-  MISO - D74
-*/
+#include "soilar-mainframe/drivers/ic880a/ic880a.hpp"
+#include <signal.h>        /* sigaction */
 
+static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
+static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
-
-LoraEndnode receiver;
-
-LoraEndnodeSettings settings = { 
-  .frequencyMHz = RFM95W_CALC_FEQ_FAST( ((long)(867E6) - 125000) ),  
-  .signalBandwidthHz = RFM95W_BW_250KHZ,
-  .preambleLength = RFM95W_DEFAULT_PREAMBLE_LENGTH,
-  .txPowerdBm = RFM95W_DEFAULT_TX_POWER,
-  .spreadingFactor = 10,
-  .codeRate = RFM95W_CODE_RATE_4_6,
-  .syncWord = 0x12,
-  .enableCRC = true,
-  .lowPowerReceiveMode = true,
-  .invertIQ = false
-};
-
-Rfm95wInterface interface = { 0, 9, 8, 2 };
-
-uint8_t buff[8] = {0};
-
-ISR_CODE void received(void);
-
-void received(void){
-
-  // received a packet
-  Serial.print("Device [1] -- Received packet ");
-  if ( receiver.read(buff, 8) == LEC_PKG_CORRUPTED ){
-    Serial.println("Corrupted");
-  } else{
-    Serial.print("[");
-    Serial.print(buff[3]); 
-    Serial.print("] ");
- 
-    Serial.print(buff[4]); 
-    Serial.print(" ");
-    Serial.print(buff[5]); 
-    Serial.print(" ");
-  
-    Serial.print("-- From device [");
-    Serial.print(buff[1]);
-    Serial.print("]");
-    Serial.print("\r\n");   
-  }
-  
+static void sig_handler(int sigio);
+static void sig_handler(int sigio) {
+    if (sigio == SIGQUIT) {
+        quit_sig = 1;;
+    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
+        exit_sig = 1;
+    }
 }
 
-void setup(){
 
-  Serial.begin(9600);
-  Serial.println("LoRa Receiver");
 
-  if ( CreateRfm95W(&receiver, &interface, &settings, 0) == LEC_ERROR_WRONG_DEVICE ) {
-    Serial.println("Starting LoRa failed!");
-    while(1);
+int main( void ) {
+  wiringPiSetup();
+
+  struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
+  /* configure signal handling */
+  sigemptyset(&sigact.sa_mask);
+  sigact.sa_flags = 0;
+  sigact.sa_handler = sig_handler;
+  sigaction(SIGQUIT, &sigact, NULL);
+  sigaction(SIGINT, &sigact, NULL);
+  sigaction(SIGTERM, &sigact, NULL);
+
+  iC880a gateway(
+    LoraGatewayDeviceGroups{ 
+      LoraGatewayDeviceGroup { {1,2,3,4,5,6,7,8}, 50000 }
+    }
+  );
+
+  gateway.init();
+  gateway.setMode( LoraGatewayModes::RX_MODE );
+  gateway.start();
+  
+  uint8_t change=0;
+  while ((quit_sig != 1) && (exit_sig != 1)) {
+
+      received = gateway.read();
+
+      if (received){
+        gateway.print(0, 1, 0, 2);
+        std::cout << std::endl; 
+      }else{
+        std::cout << "TIMEOUT!" << std::endl;
+      }
+
+      delay(500);
+    
   }
 
-  receiver.addOnReceiveCallback( received );
-  receiver.setMode( LEM_RX_LOW_POWER_MODE );
-  SelectLoraEndnodeDevice(0);
+  std::cout << "Test complete. Closing Gateway... \r\n";
+  gateway.stop();
+  std::cout << "Gateway closed! \r\n";
 
+  
+
+  return 0;
 }
 
-void loop(){}
+

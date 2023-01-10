@@ -1,4 +1,4 @@
-# Endnode Receiver
+# Gateway Receiver
 
-In this test we try to receive an 5byte data packet consisting of a 6byte header. 
-
+In this test we will be receiving data from 8 endnodes and wait untill all of them have arrived. 
+Also see `endnode-transmitter` test

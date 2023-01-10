@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo -e "\e[33mCleaning build files...."
+cd build
+rm -rf *
+cd ..
+echo -e "\e[39mDone!."
