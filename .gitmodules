@@ -1,0 +1,3 @@
+[submodule "src/soilar-module-template"]
+	path = src/soilar-module-template
+	url = https://BabyYod4@bitbucket.org/babyyod4/soilar-module-template.git
