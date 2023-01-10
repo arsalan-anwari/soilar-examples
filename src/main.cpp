@@ -52,48 +52,22 @@ int main( void ) {
 
   iC880a gateway(
     LoraGatewayDeviceGroups{ 
-      LoraGatewayDeviceGroup { {1,0,0,0,0,0,0,0}, 50000 }
+      LoraGatewayDeviceGroup { {0,0,0,0,0,0,0,0}, 0 }
     }
   );
 
   gateway.init();
-  gateway.setMode( LoraGatewayModes::RX_MODE );
+  gateway.setMode( LoraGatewayModes::TX_MODE );
   gateway.start();
   
-  bool received;
-  bool txMode = false;
-  bool rxMode = true;
-  uint8_t change=0;
+
   while ((quit_sig != 1) && (exit_sig != 1)) {
-    if (txMode){
-        gateway.send(
-          { LoraPackage{ 10, 1, 5, {0xFF, 0xAF, 0x11, 0xC3, 0x76} } }
-        );
-        change++;
-        delay(5000);
-    }
+  
+    gateway.send(
+      { LoraPackage{ 10, 1, 5, {0xFF, 0xAF, 0x11, 0xC3, 0x76} } }
+    );
 
-    if (rxMode){
-      received = gateway.read();
-
-      if (received){
-        gateway.print(0, 1, 0, 2);
-        std::cout << std::endl; 
-      }else{
-        std::cout << "TIMEOUT!" << std::endl;
-      }
-
-      delay(500);
-    }
-
-    if (change >= 11){
-      txMode = false;
-      rxMode = true;
-      gateway.stop();
-      gateway.setMode( LoraGatewayModes::RX_MODE );
-      gateway.start();
-      change = 0;
-    }
+    delay(5000);
 
   }
 
